@@ -21,21 +21,17 @@ class BaseDAO:
             return result.scalar_one_or_none()
 
     @classmethod
-    async def create(cls, obj_in: CreateSchemaType) -> ModelType:
-        """Создание новой записи."""
+    async def create (cls, **values):
         async with async_session_factory() as session:
-            try:
-                obj_in_data = obj_in.model_dump()
-                db_obj = cls.model(**obj_in_data)
-                session.add(db_obj)
-                await session.commit()
-                await session.refresh(db_obj)
-                logger.info(f"Created new {cls.model.__name__} with id: {db_obj.id}")
-                return db_obj
-            except SQLAlchemyError as e:
-                await session.rollback()
-                logger.error(f"Error creating {cls.model.__name__}: {e}")
-                raise
+            async with session.begin():
+                new_instance = cls.model(**values)
+                session.add(new_instance)
+                try:
+                    await session.commit()
+                except SQLAlchemyError as e:
+                    await session.rollback()
+                    raise e
+                return new_instance
 
     @classmethod
     async def get(cls, id: int) -> Optional[ModelType]:
