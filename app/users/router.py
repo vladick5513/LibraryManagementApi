@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException, Response, Depends
 from starlette import status
 
-from app.users.auth import get_password_hash
+from app.users.auth import get_password_hash, authenticate_user, create_access_token
 from app.users.dao import UsersDAO
-from app.users.schemas import SUserRegister
+from app.users.dependencies import get_current_user
+from app.users.models import User
+from app.users.schemas import SUserRegister, SUserAuth
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -27,3 +29,11 @@ async def auth_user(response: Response, user_data: SUserAuth):
     response.set_cookie(key="user_access_token", value=access_token,  httponly=True)
     return {"access_token": access_token, "refresh_token": None}
 
+@router.get("/me/")
+async def get_me(user_data: User = Depends(get_current_user)):
+    return user_data
+
+@router.post("/logout/")
+async def logout_user(response: Response):
+    response.delete_cookie(key="users_access_token")
+    return {'message': 'Пользователь успешно вышел из системы'}
